@@ -12,7 +12,6 @@
 
     <div class="text-2xl font-bold text-violet-700 mb-5">Special Registration 🚀</div>
 
-    <!-- Step 1: Code entry -->
     <form id="code-form" class="space-y-4">
       <input type="text" id="access-code" maxlength="6"
         class="w-full px-4 py-2 border rounded-lg outline-none text-lg focus:ring focus:border-violet-400"
@@ -20,7 +19,7 @@
       <button type="submit" class="w-full py-2 rounded-lg bg-violet-700 text-white text-lg font-semibold hover:bg-violet-800 transition">Enter Code</button>
     </form>
 
-    <!-- Step 2: Name entry -->
+    <!-- Name entry -->
     <form id="name-form" class="space-y-4 hidden">
       <input type="text" id="name-input" maxlength="32"
         class="w-full px-4 py-2 border rounded-lg outline-none text-lg"
@@ -28,7 +27,7 @@
       <button type="submit" class="w-full py-2 rounded-lg bg-green-600 text-white text-lg font-semibold hover:bg-green-700 transition">Register</button>
     </form>
 
-    <!-- Step 3: Show UID and token -->
+    <!-- Show UID and token -->
     <div id="result-section" class="hidden text-left space-y-2">
       <div class="rounded-lg bg-green-50 text-green-800 py-4 px-4 mb-3 border-2 border-green-300">
         <div class="font-bold mb-2">🎉 Registration Successful!</div>
@@ -41,12 +40,13 @@
           <span class="font-mono bg-white border px-2 py-1 rounded ml-1 text-slate-900" id="show-token"></span>
         </div>
         <div class="mt-2 text-sm text-gray-800">
-          <b>Save these!</b> You’ll need them to log in or verify in the profile tab.
+          <b>Check Firestore:</b> Data is <span id="firestore-confirm" class="text-green-700 font-bold"></span>
         </div>
       </div>
     </div>
 
     <div id="error-msg" class="text-red-700 font-semibold"></div>
+    <div id="loading-msg" class="text-violet-700 font-semibold"></div>
 
   </div>
 
@@ -66,31 +66,32 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Codes and limits
     const FIRST10_CODE = "291987";
     const NORMAL_CODE = "134765";
     const FIRST10_LIMIT = 10;
 
-    // UI Elements
     const codeForm = document.getElementById('code-form');
     const nameForm = document.getElementById('name-form');
     const resultSection = document.getElementById('result-section');
     const errorMsg = document.getElementById('error-msg');
+    const loadingMsg = document.getElementById('loading-msg');
     const showUID = document.getElementById('show-uid');
     const showToken = document.getElementById('show-token');
-    let regMode = null; // "first10" or "normal"
+    const firestoreConfirm = document.getElementById('firestore-confirm');
+    let regMode = null; // "first10"/"normal"
+    let lastUID = null, lastToken = null;
 
-    // Step 1: Handle code submission
     codeForm.onsubmit = async e => {
       e.preventDefault();
       errorMsg.textContent = '';
+      loadingMsg.textContent = '';
       const code = document.getElementById('access-code').value.trim();
-      // Check FIRST10 slot
       if (code === FIRST10_CODE) {
-        // Check how many already registered as first10
+        loadingMsg.textContent = "Checking slots for first 10 users...";
         const snap = await db.collection("users").where("specialGroup", "==", "first10").get();
+        loadingMsg.textContent = "";
         if (snap.size >= FIRST10_LIMIT) {
-          errorMsg.textContent = "Limit reached! Only 10 special users allowed for this code.";
+          errorMsg.textContent = "❌ Limit reached! Only 10 special users allowed for this code.";
           codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),300);
           return;
         }
@@ -98,7 +99,7 @@
       } else if (code === NORMAL_CODE) {
         regMode = "normal";
       } else {
-        errorMsg.textContent = "Invalid code! Please try again.";
+        errorMsg.textContent = "❌ Invalid code! Please try again.";
         codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),300);
         return;
       }
@@ -106,49 +107,56 @@
       nameForm.classList.remove('hidden');
     };
 
-    // Step 2: Handle name input and registration
     nameForm.onsubmit = async e => {
       e.preventDefault();
       errorMsg.textContent = '';
+      loadingMsg.textContent = '';
       const name = document.getElementById('name-input').value.trim();
       if (!name.match(/^[a-zA-Z0-9 ]{3,32}$/)) {
         errorMsg.textContent = "Name must be 3-32 letters or numbers.";
         nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),300);
         return;
       }
-      // Build custom UID: shadow-[name-no-spaces-lowercase]-[rand4]
+      loadingMsg.textContent = "Registering user. Please wait...";
+      // Build custom UID
       const rand4 = Math.floor(1000 + Math.random() * 9000);
       const flatName = name.replace(/\s+/g, '').toLowerCase();
       const customUID = `shadow-${flatName}${rand4}`;
-      // Generate 4-digit token code
       const token = Math.floor(1000 + Math.random() * 9000).toString();
-
-      // Check if uid exists
+      // Is already registered?
       const uidDoc = await db.collection("users").doc(customUID).get();
       if (uidDoc.exists) {
         errorMsg.textContent = "An account with this name and code already exists (try a different name).";
         nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),300);
+        loadingMsg.textContent = "";
         return;
       }
-      // Save record with code info
+      // Save
       await db.collection("users").doc(customUID).set({
         name: name,
+        displayName: name,
         customUID: customUID,
-        specialGroup: regMode, // "first10" or "normal"
+        specialGroup: regMode,
         token: token,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         locked: false,
         coins: 0,
         rank: "-",
-        canChangeName: false, // Can only set name once here!
+        canChangeName: false
       });
-      // Show UID/token
+      loadingMsg.textContent = "";
+
+      // Immediately fetch back to prove storage:
+      const checkDoc = await db.collection("users").doc(customUID).get();
+      let success = checkDoc.exists && checkDoc.data().token === token;
       nameForm.classList.add('hidden');
       resultSection.classList.remove('hidden');
       showUID.textContent = customUID;
       showToken.textContent = token;
+      firestoreConfirm.textContent = success ? "SAVED ✅" : "FAILED ❌";
+      firestoreConfirm.className = success ? "text-green-700 font-bold" : "text-red-700 font-bold";
     };
-
   </script>
 </body>
-</html>
+      </html>
+  
