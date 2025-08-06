@@ -54,6 +54,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
+    // --- YOUR FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyAOHLoX1OGHiznYvYeUSkrR2lAxzhVrsGw",
       authDomain: "learn-code-with-anay.firebaseapp.com",
@@ -92,7 +93,7 @@
         loadingMsg.textContent = "";
         if (snap.size >= FIRST10_LIMIT) {
           errorMsg.textContent = "❌ Limit reached! Only 10 special users allowed for this code.";
-          codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),300);
+          codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),280);
           return;
         }
         regMode = "first10";
@@ -100,7 +101,7 @@
         regMode = "normal";
       } else {
         errorMsg.textContent = "❌ Invalid code! Please try again.";
-        codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),300);
+        codeForm.classList.add('shake'); setTimeout(()=>codeForm.classList.remove('shake'),280);
         return;
       }
       codeForm.classList.add('hidden');
@@ -114,7 +115,7 @@
       const name = document.getElementById('name-input').value.trim();
       if (!name.match(/^[a-zA-Z0-9 ]{3,32}$/)) {
         errorMsg.textContent = "Name must be 3-32 letters or numbers.";
-        nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),300);
+        nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),280);
         return;
       }
       loadingMsg.textContent = "Registering user. Please wait...";
@@ -123,15 +124,15 @@
       const flatName = name.replace(/\s+/g, '').toLowerCase();
       const customUID = `shadow-${flatName}${rand4}`;
       const token = Math.floor(1000 + Math.random() * 9000).toString();
-      // Is already registered?
+      // Already exists?
       const uidDoc = await db.collection("users").doc(customUID).get();
       if (uidDoc.exists) {
         errorMsg.textContent = "An account with this name and code already exists (try a different name).";
-        nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),300);
+        nameForm.classList.add('shake'); setTimeout(()=>nameForm.classList.remove('shake'),280);
         loadingMsg.textContent = "";
         return;
       }
-      // Save
+      // Save record
       await db.collection("users").doc(customUID).set({
         name: name,
         displayName: name,
@@ -144,7 +145,6 @@
         rank: "-",
         canChangeName: false
       });
-      loadingMsg.textContent = "";
 
       // Immediately fetch back to prove storage:
       const checkDoc = await db.collection("users").doc(customUID).get();
@@ -155,8 +155,18 @@
       showToken.textContent = token;
       firestoreConfirm.textContent = success ? "SAVED ✅" : "FAILED ❌";
       firestoreConfirm.className = success ? "text-green-700 font-bold" : "text-red-700 font-bold";
+      loadingMsg.textContent = "";
     };
   </script>
+  <style>
+    .shake { animation: shake 0.5s; }
+    @keyframes shake {
+      10%,90%{transform:translateX(-2px);}
+      20%,80%{transform:translateX(5px);}
+      30%,50%,70%{transform:translateX(-10px);}
+      40%,60%{transform:translateX(10px);}
+    }
+  </style>
 </body>
-      </html>
+                            </html>
   
