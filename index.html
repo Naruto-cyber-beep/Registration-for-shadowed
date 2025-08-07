@@ -2,53 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <title>Shadow Circle Registration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Registration</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-gradient-to-tr from-fuchsia-100 to-blue-100 flex items-center justify-center">
-  <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 space-y-7 text-center">
-
-    <h2 class="text-2xl font-bold text-violet-700 mb-5">Register For Shadow Circle 🚀</h2>
-    <form id="reg-form" class="space-y-4">
-      <input type="text" id="name-input"
-        maxlength="23"
-        class="w-full px-4 py-2 border rounded-lg text-lg"
-        placeholder="Enter Your Name (only once)" required autofocus />
-      <input type="text" id="access-code"
-        maxlength="6"
-        class="w-full px-4 py-2 border rounded-lg text-lg"
-        placeholder="Enter Access Code" required />
-      <button type="submit"
-        class="w-full py-2 rounded-lg bg-violet-700 text-white text-lg font-semibold hover:bg-violet-800 transition">
-        Register
-      </button>
-    </form>
+<body class="bg-gradient-to-tr from-fuchsia-50 to-blue-100 flex items-center justify-center min-h-screen">
+  <div class="w-full max-w-lg p-8 bg-white shadow-xl rounded-3xl mx-auto space-y-7 text-center">
+    <div class="text-2xl font-bold text-violet-700 mb-5">Register With Google 🚀</div>
 
     <div id="result-section" class="hidden text-left space-y-2">
       <div class="rounded-lg bg-green-50 text-green-800 py-4 px-4 border-2 border-green-300">
-        <div class="font-bold mb-2">🎉 Registration Successful!</div>
-        <div><b>Your User ID:</b>
-          <span class="font-mono bg-white border px-2 py-1 rounded ml-1 text-slate-900" id="show-uid"></span>
+        <div class="font-bold mb-2">🎉 Registration Info</div>
+        <div><b>Your UID:</b>
+          <span id="show-uid" class="font-mono bg-white border px-2 py-1 rounded ml-1 text-slate-900"></span>
           <button id="copy-uid-btn" type="button" class="ml-2 px-3 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 text-base">Copy</button>
         </div>
         <div><b>Your Token:</b>
-          <span class="font-mono bg-white border px-2 py-1 rounded ml-1 text-slate-900" id="show-token"></span>
+          <span id="show-token" class="font-mono bg-white border px-2 py-1 rounded ml-1 text-slate-900"></span>
           <button id="copy-token-btn" type="button" class="ml-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-base">Copy</button>
         </div>
         <div id="copy-msg" class="block text-green-600 pt-1"></div>
         <div class="mt-2 text-gray-800 text-sm">
-          <b>Save these!</b> You'll need them to log in on the homepage.
+          <b>Save these!</b> You'll need them to log in on the homepage.<br>
+          <a href="homepage.html" class="mt-4 inline-block px-4 py-2 bg-violet-700 text-white rounded-lg font-semibold hover:bg-violet-800">Go to Homepage</a>
         </div>
       </div>
     </div>
-    <div id="error-msg" class="text-red-700 font-semibold"></div>
+    <div id="start-section">
+      <button id="google-btn" type="button"
+        class="py-2 px-5 bg-red-600 hover:bg-red-700 text-white text-lg rounded-lg font-semibold shadow transition">
+        <svg class="inline mr-2 -mt-1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48"><g><path fill="#FFC107" d="M43.61 20.083h-18.5v7.834h10.638c-1.19 3.648-4.56 6.25-8.638 6.25-5.273 0-9.555-4.28-9.555-9.555s4.28-9.555 9.555-9.555c2.63 0 5.004 1.015 6.716 2.615l5.736-5.736c-3.222-2.988-7.465-4.829-12.452-4.829C13.52 7 5.445 15.077 5.445 24.357s8.074 17.36 17.36 17.36c8.313 0 16.004-6.02 16.004-16.005a21.013 21.013 0 0 0-.203-3.629z"/></g></svg>
+        Connect with Google
+      </button>
+      <div class="mt-4 text-gray-600">
+        <b>First 10 users</b> get “Maha Yodha” status.<br />One account per Google email.
+      </div>
+    </div>
+    <div id="error-msg" class="text-red-700 font-semibold pt-4 text-center"></div>
     <div id="loading-msg" class="text-violet-700 font-semibold"></div>
-
   </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
@@ -62,75 +58,71 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    const FIRST10_CODE = "291987";
-    const NORMAL_CODE = "134765";
     const FIRST10_LIMIT = 10;
 
-    const regForm = document.getElementById('reg-form');
+    const startSection = document.getElementById('start-section');
+    const googleBtn = document.getElementById('google-btn');
     const errorMsg = document.getElementById('error-msg');
     const loadingMsg = document.getElementById('loading-msg');
     const resultSection = document.getElementById('result-section');
     const showUID = document.getElementById('show-uid');
     const showToken = document.getElementById('show-token');
-    let regMode = null; // first10 or normal
 
-    regForm.onsubmit = async e => {
-      e.preventDefault();
+    googleBtn.onclick = async () => {
       errorMsg.textContent = '';
-      loadingMsg.textContent = '';
-      const name = document.getElementById('name-input').value.trim();
-      const code = document.getElementById('access-code').value.trim();
-
-      if (!name.match(/^[a-zA-Z0-9 ]{3,23}$/)) {
-        errorMsg.textContent = "Name must be 3-23 letters or numbers.";
-        return;
-      }
-      // --- CODE LOGIC
-      if (code === FIRST10_CODE) {
-        loadingMsg.textContent = "Checking for available first10 slots...";
-        const snap = await db.collection("users").where("specialGroup", "==", "first10").get();
-        loadingMsg.textContent = "";
-        if (snap.size >= FIRST10_LIMIT) {
-          errorMsg.textContent = "❌ Limit reached! Only 10 users allowed for this code.";
+      loadingMsg.textContent = "Authenticating with Google...";
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+        if (!user || !user.email) {
+          errorMsg.textContent = "Could not get Google account. Try again.";
+          loadingMsg.textContent = "";
           return;
         }
-        regMode = "first10";
-      } else if (code === NORMAL_CODE) {
-        regMode = "normal";
-      } else {
-        errorMsg.textContent = "❌ Invalid code! Please try again.";
-        return;
-      }
-      // --- Generate UID and TOKEN
-      const rand4 = Math.floor(1000 + Math.random() * 9000);
-      const randToken6 = Math.floor(100000 + Math.random() * 900000);
-      const flatName = name.replace(/\s+/g, '').toLowerCase();
-      const customUID = `shadow-${flatName}${rand4}`;
-      // Prevent double registration
-      const uidDoc = await db.collection("users").doc(customUID).get();
-      if (uidDoc.exists) {
-        errorMsg.textContent = "Account with this name already exists, pick a different name.";
-        return;
-      }
-      // Store in Firebase
-      await db.collection("users").doc(customUID).set({
-        name: name,
-        displayName: name,
-        customUID: customUID,
-        specialGroup: regMode,
-        token: randToken6.toString(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
 
-      // Show result section
-      regForm.classList.add('hidden');
-      showUID.textContent = customUID;
-      showToken.textContent = randToken6;
-      resultSection.classList.remove('hidden');
+        // See if this email is already registered
+        const snap = await db.collection("users").where("email", "==", user.email).limit(1).get();
+        let customUID, token, specialGroup;
+        if (!snap.empty) { // Already registered: show old UID/token
+          const doc = snap.docs[0].data();
+          customUID = doc.customUID;
+          token = doc.token;
+          specialGroup = doc.specialGroup || "normal";
+        } else {
+          // Is there a "first10" slot for this new registration?
+          const slotSnap = await db.collection("users").where("specialGroup", "==", "first10").get();
+          specialGroup = (slotSnap.size < FIRST10_LIMIT) ? "first10" : "normal";
+          const displayName = user.displayName?.replace(/\s+/g, '').toLowerCase() || "user";
+          const rand4 = Math.floor(1000 + Math.random() * 9000);
+          customUID = `shadow-${displayName}${rand4}`;
+          token = Math.floor(100000 + Math.random() * 900000).toString();
+          await db.collection("users").doc(customUID).set({
+            name: user.displayName,
+            email: user.email,
+            customUID: customUID,
+            specialGroup: specialGroup,
+            token: token,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            photoURL: user.photoURL
+          });
+        }
+
+        startSection.classList.add('hidden');
+        resultSection.classList.remove('hidden');
+        showUID.textContent = customUID;
+        showToken.textContent = token;
+        loadingMsg.textContent = "";
+
+      } catch (err) {
+        errorMsg.textContent = err.message || "Google sign-in failed. Try again.";
+        loadingMsg.textContent = "";
+      }
     };
 
-    // ----- COPY BUTTONS -----
+    // Copy buttons
     document.getElementById('copy-uid-btn').onclick = () => {
       const uid = showUID.textContent;
       navigator.clipboard.writeText(uid).then(() => showCopyMsg('UID copied!'));
@@ -142,9 +134,9 @@
     function showCopyMsg(msg) {
       const c = document.getElementById('copy-msg');
       c.textContent = msg;
-      setTimeout(() => c.textContent = '', 1300);
+      setTimeout(() => c.textContent = '', 1500);
     }
   </script>
 </body>
-  </html>
+    </html>
   
