@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Shadow Circle - Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 to-violet-100">
+<div class="max-w-md w-full bg-white p-8 rounded-3xl shadow-lg mx-auto">
+  <h2 class="text-2xl font-bold text-violet-700 mb-5">Login with UID & Token</h2>
+  <form id="verify-form" class="space-y-3">
+    <input type="text" id="uid" maxlength="40"
+      class="w-full px-4 py-2 border rounded-lg text-lg"
+      placeholder="Enter your UID" required>
+    <input type="text" id="token" maxlength="6"
+      class="w-full px-4 py-2 border rounded-lg text-lg"
+      placeholder="Enter your 6-digit token" required>
+    <button type="submit"
+      class="w-full py-2 rounded-lg bg-violet-700 text-white text-lg font-semibold hover:bg-violet-800 transition">
+      Verify & Login
+    </button>
+  </form>
+  <div id="verify-msg" class="mt-3 text-lg font-semibold"></div>
+  <div id="user-info" class="hidden mt-5 p-4 rounded-lg bg-green-50 border border-green-200">
+    <h3 class="text-green-700 font-bold">Welcome, <span id="user-name"></span>! ✅</h3>
+    <div>Your UID: <b id="show-userid"></b></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAOHLoX1OGHiznYvYeUSkrR2lAxzhVrsGw",
+    authDomain: "learn-code-with-anay.firebaseapp.com",
+    projectId: "learn-code-with-anay",
+    storageBucket: "learn-code-with-anay.firebasestorage.app",
+    messagingSenderId: "197075143711",
+    appId: "1:197075143711:web:64fc5d83528f907d38d92a",
+    measurementId: "G-F01VRZK4ZL"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const verifyForm = document.getElementById('verify-form');
+  const verifyMsg = document.getElementById('verify-msg');
+  const userInfoDiv = document.getElementById('user-info');
+  const userNameSpan = document.getElementById('user-name');
+  const showUserIDSpan = document.getElementById('show-userid');
+
+  verifyForm.onsubmit = async (e) => {
+    e.preventDefault();
+    verifyMsg.textContent = "";
+    userInfoDiv.classList.add('hidden');
+    const uid = document.getElementById('uid').value.trim();
+    const token = document.getElementById('token').value.trim();
+    if (uid === "" || token === "") {
+      verifyMsg.textContent = "Please enter both UID and token.";
+      verifyMsg.className = "mt-3 text-lg font-semibold text-red-600";
+      return;
+    }
+    verifyMsg.textContent = "Checking ...";
+    verifyMsg.className = "mt-3 text-lg font-semibold text-blue-700";
+    try {
+      const doc = await db.collection("users").doc(uid).get();
+      if (!doc.exists) {
+        verifyMsg.textContent = "No data found!";
+        verifyMsg.className = "mt-3 text-lg font-semibold text-red-600";
+        return;
+      }
+      if (doc.data().token === token) {
+        verifyMsg.textContent = "✔️ UID and token match!";
+        verifyMsg.className = "mt-3 text-lg font-semibold text-green-600";
+        userNameSpan.textContent = doc.data().name || "(no name found)";
+        showUserIDSpan.textContent = uid;
+        userInfoDiv.classList.remove('hidden');
+      } else {
+        verifyMsg.textContent = "UID or token not correct!";
+        verifyMsg.className = "mt-3 text-lg font-semibold text-red-600";
+      }
+    } catch (err) {
+      verifyMsg.textContent = "Error: "+(err.message || "");
+      verifyMsg.className = "mt-3 text-lg font-semibold text-red-600";
+    }
+  }
+</script>
+</body>
+</html>
